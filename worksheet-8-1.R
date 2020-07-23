@@ -1,8 +1,12 @@
+library(shiny)
+
 # User Interface
-... <- ...(title = 'Hello, Shiny World!')
+ui <- navbarPage(title = 'Hello, Shiny World!')
 
 # Server
-... <- function(...) {}
+server <- function(input, output) { #curly brackets explain what function does
+  
+}
 
 # Create the Shiny App
-shinyApp(...)
+shinyApp(ui, server) 
