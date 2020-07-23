@@ -1,17 +1,17 @@
 ## Web Scraping
 
-library(...)
+library(httr)
 
-response <- ...('http://research.jisao.washington.edu/pdo/PDO.latest')
+response <- GET('http://research.jisao.washington.edu/pdo/PDO.latest')
 response
 
 library(rvest) 
 
-pdo_doc <- read_html(...)
+pdo_doc <- read_html(response)
 pdo_doc
 
-pdo_node <- html_node(..., "p")
-pdo_text <- ...(pdo_node)
+pdo_node <- html_node(pdo_doc, "p")
+pdo_text <- html_text(pdo_node)
 
 library(stringr)
 pdo_text_2017 <- str_match(pdo_text, "(?<=2017).*.(?=\\n2018)")
@@ -20,48 +20,51 @@ str_extract_all(pdo_text_2017[1], "[0-9-.]+")
 
 ## HTML Tables
 
-census_vars_doc <- ...('https://api.census.gov/data/2017/acs/acs5/variables.html')
+census_vars_doc <- read_html('https://api.census.gov/data/2017/acs/acs5/variables.html')
 
-table_raw <- html_node(census_vars_doc, ...)
+table_raw <- html_node(census_vars_doc, "table")
 
-census_vars <- html_table(..., fill = TRUE) 
+census_vars <- html_table(table_raw, fill = TRUE) 
 
 library(tidyverse)
 
-... %>%
+census_vars %>%
   set_tidy_names() %>%
-  ...(Name, Label) %>%
-  filter(grepl('Median household income', ...))
+  select(Name, Label) %>%
+  filter(grepl('Median household income', Label))
 
 ## Web Services
+#API - application programing interface --> intended for programmers to get dat systematically 
 
 path <- 'https://api.census.gov/data/2018/acs/acs5'
-query_params <- list('get' = 'NAME,...', 
+query_params <- list('get' = 'NAME,B19013_001E', 
                      'for' = 'county:*',
                      'in' = 'state:24')
 
-response = GET(..., ... = ...)
+response = GET(path, query =query_params)
 response
 
-response$...['content-type']
+response$headers['content-type']
 
 ## Response Content
 
-library(...)
+library(jsonlite)
 
-county_income <- ... %>%
-  ...(as = 'text') %>%
-  ...()
+county_income <- response %>%
+  content(as = 'text') %>%
+  fromJSON()
 
+head(county_income)
 ## Specialized Packages
 
 library(tidycensus)
+source(census_api_key.R)
 
 variables <- c('NAME', 'B19013_001E')
 
 county_income <- get_acs(geography = 'county',
-                         variables = ...,
-                         state = ...,
+                         variables = variables,
+                         state = "MD",
                          year = 2018,
                          geometry = TRUE)
 

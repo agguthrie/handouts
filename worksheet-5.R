@@ -1,20 +1,26 @@
 ## RegEx
 
-library(...)
+library(stringr)
+str_extract_all('Email info@sesync.org or tweet @SESYNC for details!',
+                '\\b\\S+@\\S+\\b')
 
 enron <- ...(DirSource("data/enron"))
 
-library(...)
+library(tm)
+enron<-VCorpus(DirSource("data/enron"))
 
-match <- str_match(..., '^From: (.*)')
+email<-enron[[1]]
+content(email)
 
+match <- str_match(content(email), '^From: (.*)')
+head(match)
 
 txt <- ...
 str_match(txt, '...')
 
 ## Data Extraction
 
-enron <- tm_map(enron, ... {
+enron <- tm_map(enron, function(email) {
   body <- content(email)
   match <- str_match(body, '^From: (.*)')
   match <- na.omit(match)
@@ -22,40 +28,47 @@ enron <- tm_map(enron, ... {
   return(email)
 })
 
+email<-enron[[1]]
+meta(email)
+
 ## Relational Data Exrtraction
 
 get_to <- function(email) {
   body <- content(email)
   match <- str_detect(body, '^To:')
   if (any(match)) {
-    ... <- which(match)[[1]]
+    to_start <- which(match)[[1]]
     match <- str_detect(body, '^Subject:')
-    ... <- which(match)[[1]] - 1
-    to <- paste(body[...:...], collapse = '')
-    to <- str_extract_all(to, ...)
+    to_end <- which(match)[[1]] - 1
+    to <- paste(body[to_start:to_end], collapse = '')
+    to <- str_extract_all(to, '\\b\\S+@\\S+\\b')
     return(unlist(to))
   } else {
     return(NA)
   }
 }
 
-edges <- ...(enron, FUN = function(email) {
+get_to(email)
+
+
+edges <- lapply(enron, FUN = function(email) { #loops through emails -- lapply
   from <- meta(email, 'author')
   to <- get_to(email)
   return(cbind(from, to))
 })
-edges <- do.call(..., edges)
+edges <- do.call(rbind, edges)
 edges <- na.omit(edges)
 attr(edges, 'na.action') <- NULL
+dim(edges) #how mant relations there are
 
-library(...)
+library(network)
 
-g <- ...
-plot(...)
+g <- network(edges)
+plot(g)
 
 ## Text Mining
 
-enron <- ...(enron, function(email) {
+enron <- tm_map(enron, function(email) {
   body <- content(email)
   match <- str_detect(body, '^X-FileName:')
   begin <- which(match)[[1]] + 1
@@ -66,24 +79,29 @@ enron <- ...(enron, function(email) {
   return(email)
 })
 
+email<-enron[[2]]
+content(email)
+
 ## Cleaning Text
 
 library(magrittr)
 
 enron_words <- enron %>%
-  tm_map(...) %>%
-  tm_map(...) %>%
-  tm_map(...)
+  tm_map(removePunctuation) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(stripWhitespace)
 
-... <- function(body) {
+content(enron[[2]])
+
+remove_links <- function(body) {
   match <- str_detect(body, '(http|www|mailto)')
   body[!match]
 }
 
 enron_words <- enron_words %>%
-  tm_map(...)
+  tm_map(content_transformer(remove_links))
 
-## Stopwords and Stems
+## Stopwords and Stems #remove words like and, a, the, and removing endings like ING
 
 enron_words <- enron_words %>%
   tm_map(stemDocument) %>%
@@ -97,16 +115,16 @@ dtm <- DocumentTermMatrix(enron_words)
 
 library(tidytext)
 library(dplyr)
-dtt <- ...(dtm)
+dtt <- tidy(dtm)
 words <- dtt %>%
-  group_by(...) %>%
+  group_by(term) %>%
   summarise(
     n = n(),
     total = sum(count)) %>%
   mutate(nchar = nchar(term))
 
 library(ggplot2)
-ggplot(..., aes(...)) +
+ggplot(words, aes(x=nchar)) +
   geom_histogram(binwidth = 1)
 
 dtt_trimmed <- words %>%
@@ -118,11 +136,11 @@ dtt_trimmed <- words %>%
   inner_join(dtt)
 
 dtm_trimmed <- dtt_trimmed %>%
-  ...(document, term, count)
+  cast_dtm(document, term, count)
 
 ## Term Correlations
 
-word_assoc <- ...(dtm_trimmed, ..., 0.6)
+word_assoc <- findAssocs(dtm_trimmed, "Ken", 0.6)
 word_assoc <- data.frame(
   word = names(word_assoc[[1]]),
   assoc = word_assoc,
@@ -133,16 +151,23 @@ word_assoc <- data.frame(
 library(topicmodels)
 
 seed = 12345
-fit = ...(dtm_trimmed, k = 5, control = list(seed=seed))
-... <- as.data.frame(
+fit = LDA(dtm_trimmed, k = 5, control = list(seed=seed))
+
+email_topics <- as.data.frame(
   posterior(fit, dtm_trimmed)$topics)
+
+head(ggwordcloud)
 
 library(ggwordcloud)
 
-topics <- ...(fit) %>%
+topics <- tidy(fit) %>%
   filter(beta > 0.004)
 
+ggplot(word_assoc,
+       aes(label=word, size=Ken))+
+  geom_text_wordcloud_area()
+
 ggplot(topics,
-  aes(size = ..., label = ...)) +
+  aes(size = beta, label = term)) +
   geom_text_wordcloud_area(rm_outside = TRUE) +
   facet_wrap(vars(topic))

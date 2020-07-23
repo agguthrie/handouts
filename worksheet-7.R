@@ -1,38 +1,49 @@
 ## Vector Data
 
-library(...)
+library(sf)
 
 shp <- 'data/cb_2016_us_county_5m'
-counties <- ...(
-    ...,
+counties <- st_read(
+    shp,
     stringsAsFactors = FALSE)
 
-sesync <- ...(
-    ...(c(-76.503394, 38.976546)),
+sesync <- st_sfc(
+    st_point(c(-76.503394, 38.976546)),
     crs = st_crs(counties))
 
 ## Bounding box
+st_bbox(counties)
 
-library(...)
-counties_md <- ...
+library(dplyr)
+counties_md <- filter(
+    counties,
+    STATEFP =="24"
+)
+
+st_bbox(counties_md)
 
 ## Grid
 
-... <- ...(counties_md, ...)
+grid_md<-st_make_grid(counties_md, n=4)
 
 
 ## Plot Layers
 
-plot(...)
-plot(..., add = ...)
-plot(..., col = "green", pch = 20, ...)
+plot(grid_md)
+plot(counties_md['ALAND'], add = TRUE)
+plot(sesync, col = "green", pch = 20, add = TRUE)
 
 ## Coordinate Transforms
+st_within(sesync,counties_md) #look at point or series of points is contained within a polygon
 
 shp <- 'data/huc250k'
 huc <- st_read(
-    ...,
+    shp,
     stringsAsFactors = FALSE)
+
+st_crs(counties_md)$proj4string
+st_crs(counties_md)$huc
+
 
 prj <- '+proj=aea +lat_1=29.5 +lat_2=45.5 \
     +lat_0=23 +lon_0=-96 +x_0=0 +y_0=0    \
@@ -41,14 +52,19 @@ prj <- '+proj=aea +lat_1=29.5 +lat_2=45.5 \
 
 counties_md <- st_transform(
     counties_md,
-    ...)
-huc <- ...(huc, ...)
-sesync <- ...
+    crs=prj)
+
+huc <- st_transform(
+    huc, 
+    crs=prj)
+sesync <- st_transform(
+    sesync,
+    crs=prj)
 
 plot(counties_md$geometry)
-plot(...,
+plot(huc$geometry,
      border = 'blue', add = TRUE)
-plot(..., col = 'green',
+plot(sesync, col = 'green',
      pch = 20, add = TRUE)
 
 ## Geometric Operations

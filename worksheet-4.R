@@ -38,22 +38,25 @@ tidy_survey <- pivot_wider(survey,
 ## Sample Data 
 
 library(data.table)
-cbp <- fread('data/cbp15co.csv')
+cbp <- fread('cbp15co.csv')
 
 cbp <- fread(
   'data/cbp15co.csv',
-  ...,
+  colClasses = c(
+    FIPSTATE = 'character',
+    FIPSCITY = 'character')
+  ),
   ...)
 
 acs <- fread(
-  'data/ACS/sector_ACS_15_5YR_S2413.csv',
+  'ACS/sector_ACS_15_5YR_S2413.csv',
   colClasses = c(FIPS = 'character'))
 
 ## dplyr Functions 
 
-library(...)
-cbp2 <- filter(...,
-  ...,
+library(dplyr)
+cbp2 <- filter(cbp15co,
+  grelp(""),
   !grepl('------', NAICS))
 
 library(...)
